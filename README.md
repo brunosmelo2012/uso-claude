@@ -1,5 +1,7 @@
 # uso-claude
 
+> Mod não oficial, feito por um usuário. Não tem vínculo com a Anthropic nem é mantido por ela.
+
 Mod para o Claude Code que mostra, numa faixa acima da caixa de texto, quanto você já usou do Claude:
 
 - **Relógio** — limite de 5 horas (barra cinza)
