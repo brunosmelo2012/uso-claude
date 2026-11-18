@@ -8,7 +8,7 @@ const uso = atom({ plugin: 'uso-claude', key: 'uso' } as const, null)
 const CINZA = '#8f8e89'
 const LARANJA = '#D97757'
 const TRILHO = '#000000'
-const TEXTO = '#000000'
+const TEXTO = '#b8b7b2'
 
 function montar(limites: SessionRateLimit[], contexto: SessionContextUsage): Uso {
   return {
