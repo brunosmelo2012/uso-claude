@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, SessionContextUsage, SessionRateLimit } from 'claude-code'
+import type { Register, SessionRateLimit } from 'claude-code'
 
-import type { Uso } from '../types'
+import type { Janela, Uso } from '../types'
 
 const uso = atom({ plugin: 'uso-claude', key: 'uso' } as const, null)
 
@@ -10,11 +10,25 @@ const LARANJA = '#D97757'
 const TRILHO = '#000000'
 const TEXTO = '#b8b7b2'
 
-function montar(limites: SessionRateLimit[], contexto: SessionContextUsage): Uso {
-  return {
-    limites: limites.map(l => ({ kind: l.kind, percentUsed: l.percentUsed, resetsAt: l.resetsAt })),
-    contexto: contexto.percent,
+// O servidor só informa os limites depois da primeira resposta da sessão.
+// Até lá, mostra a última leitura guardada (de qualquer sessão).
+async function limitesComMemoria($: any, limites: SessionRateLimit[]): Promise<Janela[]> {
+  if (limites.length > 0) {
+    const atuais = limites.map(l => ({ kind: l.kind, percentUsed: l.percentUsed, resetsAt: l.resetsAt }))
+    await $.store.set('limites', atuais)
+    return atuais
   }
+  const guardados = await $.store.get('limites')
+  return Array.isArray(guardados) ? (guardados as Janela[]) : []
+}
+
+// Janela que já resetou desde a última leitura volta a 0%
+function vigente(l: Janela): number {
+  if (l.resetsAt) {
+    const fim = new Date(l.resetsAt).getTime()
+    if (!Number.isNaN(fim) && fim < Date.now()) return 0
+  }
+  return l.percentUsed
 }
 
 // ---------- ícones ----------
@@ -96,12 +110,14 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const r = await next(e)
     const u = await $.session.usage()
-    await update($, uso, () => montar(u.rateLimits, u.context))
+    const limites = await limitesComMemoria($, u.rateLimits)
+    await update($, uso, () => ({ limites, contexto: u.context.percent }))
     return r
   })
 
   on('session.measure', async ($, e, next) => {
-    await update($, uso, () => montar(e.rateLimits, e.context))
+    const limites = await limitesComMemoria($, e.rateLimits)
+    await update($, uso, () => ({ limites, contexto: e.context.percent }))
     return next(e)
   })
 
@@ -113,8 +129,8 @@ export const register: Register = on => {
 
     const itens: Item[] = []
     for (const l of u.limites) {
-      if (l.kind === 'five_hour') itens.push({ icone: 'relogio', pct: l.percentUsed, cor: CINZA, esfarela: true, largura: 120, nome: '5h' })
-      else if (l.kind === 'seven_day') itens.push({ icone: 'calendario', pct: l.percentUsed, cor: LARANJA, esfarela: false, largura: 120, nome: '7 dias' })
+      if (l.kind === 'five_hour') itens.push({ icone: 'relogio', pct: vigente(l), cor: CINZA, esfarela: true, largura: 120, nome: '5h' })
+      else if (l.kind === 'seven_day') itens.push({ icone: 'calendario', pct: vigente(l), cor: LARANJA, esfarela: false, largura: 120, nome: '7 dias' })
     }
     if (u.contexto !== undefined) itens.push({ icone: 'linhas', pct: u.contexto, cor: CINZA, esfarela: false, largura: 90, nome: 'contexto' })
 

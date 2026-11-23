@@ -1,6 +1,6 @@
 {
   "name": "uso-claude",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Faixa acima da caixa de texto com o uso do limite de 5h, de 7 dias e do contexto. Mod não oficial, sem vínculo com a Anthropic",
   "types": "./types/index.d.ts"
 }
